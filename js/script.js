@@ -5,6 +5,52 @@ const apodData = 'https://cdn.jsdelivr.net/gh/GCA-Classroom/apod/data.json';
 const getImageBtn = document.getElementById('getImageBtn');
 const gallery = document.getElementById('gallery');
 
+// --- Did You Know facts (stored here and chosen at random on page load) ---
+const didYouKnowFacts = [
+	"A day on Venus is longer than a year on Venus — it rotates very slowly compared to its orbit.",
+	"Jupiter's Great Red Spot is a huge storm larger than Earth that has been raging for centuries.",
+	"Neutron stars are so dense that a teaspoon of neutron-star material would weigh about a billion tons on Earth.",
+	"There are more trees on Earth than stars in the Milky Way — estimates suggest ~3 trillion trees vs ~100-400 billion stars.",
+	"The footprints left on the Moon will likely remain for millions of years because there's no wind to erase them.",
+	"Saturn could float in water — it's the least dense planet in our solar system (less dense than water).",
+	"Light from the Sun takes about 8 minutes and 20 seconds to reach Earth.",
+	"A spoonful of the Sun's core would be incredibly heavy — but the Sun's core is plasma, not solid material.",
+	"The Milky Way and Andromeda galaxies are on a collision course and will merge in about 4 billion years.",
+	"There are diamond rain storms on some planets like Neptune and Uranus under extreme pressure and temperature."
+];
+
+function createDidYouKnowElement(fact) {
+	const box = document.createElement('div');
+	box.className = 'did-you-know';
+	box.innerHTML = `
+		<h3>Did you know?</h3>
+		<p>${fact}</p>
+	`;
+	return box;
+}
+
+function showRandomDidYouKnow() {
+	if (!gallery) return;
+	// pick a random fact
+	const idx = Math.floor(Math.random() * didYouKnowFacts.length);
+	const fact = didYouKnowFacts[idx];
+
+	// remove existing if present
+	const existing = document.querySelector('.did-you-know');
+	if (existing) existing.remove();
+
+	const el = createDidYouKnowElement(fact);
+	// insert the fact box right above the gallery
+	gallery.parentNode.insertBefore(el, gallery);
+}
+
+// ensure we run on load (works whether this script runs before or after DOMContentLoaded)
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', showRandomDidYouKnow);
+} else {
+	showRandomDidYouKnow();
+}
+
 // Helper: clear gallery
 function clearGallery() {
 	gallery.innerHTML = '';
@@ -49,6 +95,9 @@ async function fetchAndRender() {
 		getImageBtn.disabled = true;
 		const prevText = getImageBtn.textContent;
 		getImageBtn.textContent = 'Loading...';
+
+		// show a friendly gallery-level loading message while we fetch
+		showPlaceholder('loading space images 🚀');
 
 		const res = await fetch(apodData);
 		if (!res.ok) throw new Error(`Network response was not ok (${res.status})`);
