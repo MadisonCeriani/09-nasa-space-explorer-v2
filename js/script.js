@@ -66,24 +66,50 @@ function showPlaceholder(message) {
 	`;
 }
 
-// Render a single gallery item (image, title, date)
+// Render a single gallery item (handles images and videos)
 function renderItem(item) {
 	const itemDiv = document.createElement('div');
 	itemDiv.className = 'gallery-item';
-
-	const img = document.createElement('img');
-	// prefer hdurl when available
-	img.src = item.hdurl || item.url || '';
-	img.alt = item.title || 'Space image';
-	img.loading = 'lazy';
 
 	const caption = document.createElement('p');
 	// show title and date
 	caption.textContent = `${item.title || 'Untitled'} — ${item.date || ''}`;
 
-	itemDiv.appendChild(img);
+	if (item.media_type === 'image') {
+		const img = document.createElement('img');
+		// prefer hdurl when available
+		img.src = item.hdurl || item.url || '';
+		img.alt = item.title || 'Space image';
+		img.loading = 'lazy';
+		itemDiv.appendChild(img);
+	} else if (item.media_type === 'video') {
+		// Try to show a thumbnail if available, otherwise show a play-card placeholder
+		const thumbUrl = item.thumbnail_url || item.thumbnail || null;
+		if (thumbUrl) {
+			const img = document.createElement('img');
+			img.src = thumbUrl;
+			img.alt = item.title || 'Space video thumbnail';
+			img.loading = 'lazy';
+			itemDiv.appendChild(img);
+		} else {
+			// create a simple play placeholder
+			const placeholder = document.createElement('div');
+			placeholder.className = 'video-placeholder';
+			placeholder.innerHTML = '<div class="play-icon">▶</div><div class="video-text">Watch video</div>';
+			itemDiv.appendChild(placeholder);
+		}
+
+		// optionally, make the whole item a link that opens the video in a new tab if clicked with modifier
+	} else {
+		// unsupported media type - show a simple message
+		const note = document.createElement('div');
+		note.textContent = 'Unsupported media type';
+		itemDiv.appendChild(note);
+	}
+
 	itemDiv.appendChild(caption);
-	// open modal on click and pass full item data
+
+	// clicking opens modal for both images and videos; if video can't embed, modal will include a link
 	itemDiv.addEventListener('click', () => openModal(item));
 
 	gallery.appendChild(itemDiv);
@@ -112,14 +138,14 @@ async function fetchAndRender() {
 			return;
 		}
 
-		// Only render items that are images (skip videos)
-		const images = data.filter(i => i.media_type === 'image');
-		if (images.length === 0) {
-			showPlaceholder('No image items found (dataset contains only videos).');
+		// Render supported media types (images and videos)
+		const items = data.filter(i => i.media_type === 'image' || i.media_type === 'video');
+		if (items.length === 0) {
+			showPlaceholder('No image or video items found in the dataset.');
 			return;
 		}
 
-		images.forEach(renderItem);
+		items.forEach(renderItem);
 
 	} catch (err) {
 		clearGallery();
@@ -147,6 +173,7 @@ let modalImage = null;
 let modalTitle = null;
 let modalDate = null;
 let modalExplanation = null;
+let modalMediaContainer = null;
 
 function ensureModal() {
 	if (modalOverlay) return;
@@ -175,6 +202,7 @@ function ensureModal() {
 	document.body.appendChild(modalOverlay);
 
 	// references
+	modalMediaContainer = modalOverlay.querySelector('.modal-media');
 	modalImage = modalOverlay.querySelector('.modal-image');
 	modalTitle = modalOverlay.querySelector('.modal-title');
 	modalDate = modalOverlay.querySelector('.modal-date');
@@ -197,12 +225,54 @@ function ensureModal() {
 function openModal(item) {
 	ensureModal();
 	// set content
-	const src = item.hdurl || item.url || '';
-	modalImage.src = src;
-	modalImage.alt = item.title || 'Space image';
 	modalTitle.textContent = item.title || 'Untitled';
 	modalDate.textContent = item.date || '';
 	modalExplanation.textContent = item.explanation || '';
+
+	// fill media area depending on type
+	if (item.media_type === 'video') {
+		// try to embed the provided url; many APOD video urls are embed-friendly
+		const videoUrl = item.url || item.embed_url || '';
+		// simple heuristic: if it's a YouTube watch link, convert to embed
+		let iframeSrc = videoUrl;
+		try {
+			const u = new URL(videoUrl);
+			if ((u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be'))) {
+				// convert watch?v= to embed if needed
+				if (u.hostname.includes('youtu.be')) {
+					// short url format: https://youtu.be/ID
+					const id = u.pathname.slice(1);
+					iframeSrc = `https://www.youtube.com/embed/${id}`;
+				} else if (u.searchParams.has('v')) {
+					iframeSrc = `https://www.youtube.com/embed/${u.searchParams.get('v')}`;
+				}
+			}
+		} catch (e) {
+			// ignore URL parsing errors and use raw url
+		}
+
+		// replace media container with an iframe (include helpful allow attributes)
+		modalMediaContainer.innerHTML = `<iframe class="modal-iframe" src="${iframeSrc}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="${(item.title||'Video')}"></iframe>`;
+
+		// add a clear fallback link so users can open the video in a new tab if embedding fails
+		const infoDiv = modalOverlay.querySelector('.modal-info');
+		if (infoDiv) {
+			// remove any previous link
+			const prev = infoDiv.querySelector('.modal-video-link');
+			if (prev) prev.remove();
+			const fallbackLink = document.createElement('a');
+			fallbackLink.className = 'modal-video-link';
+			fallbackLink.href = item.url || videoUrl || '#';
+			fallbackLink.target = '_blank';
+			fallbackLink.rel = 'noopener noreferrer';
+			fallbackLink.textContent = 'Open video in a new tab';
+			infoDiv.appendChild(fallbackLink);
+		}
+	} else {
+		const src = item.hdurl || item.url || '';
+		modalMediaContainer.innerHTML = `<img class="modal-image" src="${src}" alt="${(item.title||'Space image')}" />`;
+		modalImage = modalMediaContainer.querySelector('.modal-image');
+	}
 
 	// show
 	modalOverlay.setAttribute('aria-hidden', 'false');
