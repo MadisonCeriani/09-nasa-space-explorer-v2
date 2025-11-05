@@ -124,6 +124,90 @@ button:hover {
   border-radius: 4px;
 }
 
+/* make items clickable */
+.gallery-item {
+  cursor: pointer;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  max-width: 1000px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.modal-close {
+  position: absolute;
+  right: 18px;
+  top: 12px;
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.modal-media {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.modal-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.modal-info {
+  padding-top: 8px;
+}
+.modal-title {
+  margin: 0 0 6px 0;
+}
+.modal-date {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+.modal-explanation {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
+}
+
+/* desktop layout: put image and info side-by-side */
+@media (min-width: 900px) {
+  .modal-body {
+    flex-direction: row;
+  }
+  .modal-media, .modal-info { flex: 1 1 50%; }
+  .modal-media { padding-right: 12px; }
+  .modal-info { padding-left: 12px; }
+}
+
 .gallery-item p {
   margin-top: 10px;
   padding: 5px;
